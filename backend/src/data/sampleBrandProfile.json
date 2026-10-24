@@ -1,0 +1,11 @@
+{
+  "brandName": "Acme Core",
+  "voice": ["clear", "confident", "supportive"],
+  "avoidWords": ["guaranteed", "flawless", "crush your goals"],
+  "preferredTerms": [
+    { "from": "cheap", "to": "affordable" },
+    { "from": "customers", "to": "teams" },
+    { "from": "customer", "to": "team" }
+  ],
+  "notes": "Avoid absolute promises. Support numbers and performance claims with an approved source."
+}

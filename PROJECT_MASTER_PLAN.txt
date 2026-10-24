@@ -1,0 +1,362 @@
+BRANDGUARD AI — PROJECT MASTER PLAN & AI HANDOFF GUIDE
+FutureStack Hackathon | Round 2 Build Plan | Version 1.0 | 22 October 2026
+
+============================================================
+0. HOW TO USE THIS FILE
+============================================================
+Save this file in the repository root as PROJECT_MASTER_PLAN.txt.
+Give it to your AI coding assistant at the start of each session along with the current code/repository and the latest STATUS section.
+
+IMPORTANT WORKING RULES
+- The actual repository is the source of truth. Do not assume a planned feature already exists.
+- Inspect current files and run the project before editing.
+- Work in small, verifiable steps; do not build the entire roadmap at once.
+- Preserve working code. Do not rewrite the project to add one feature.
+- After each change, explain files changed, how to run/test, results and limitations.
+- Never claim a feature is complete unless it was tested or the lack of testing is clearly stated.
+
+============================================================
+1. PROJECT SUMMARY
+============================================================
+Product: BrandGuard AI
+One-line description: A brand-governance assistant that checks marketing content against a company's brand rules, flags inconsistent or risky wording, explains issues, and helps a human reviewer prepare an improved draft.
+
+Target users: marketing teams, content writers/agencies, brand managers and review/compliance teams.
+
+Core user journey:
+1. User opens the app.
+2. User selects/configures a brand profile.
+3. User pastes marketing content.
+4. User runs a review.
+5. The system checks terminology, tone/style and potentially unsupported claims.
+6. Findings show category, severity, matched snippet, explanation and suggestion.
+7. User reviews suggestions and prepares a revised draft.
+8. User copies/exports the draft.
+9. The UI reminds the user that a human must approve content before publication.
+
+Product principle: Help humans make better brand decisions. Do not claim legal compliance or say a flagged claim is definitely false. A claim flag means “verify against approved evidence.”
+
+============================================================
+2. ROUND 2 PRIORITIES
+============================================================
+P0 — MUST WORK:
+- Public app link loads.
+- User can enter content and run a review.
+- Results and suggestions appear.
+- User can inspect/copy a suggested draft.
+- Loading, empty-input, long-input and API-failure states are handled.
+- Public links open without judge sign-in.
+
+P1 — STRONG MVP:
+- Editable brand profile/guidelines.
+- Prohibited words and preferred terms checks.
+- Tone/style guidance.
+- Risky-claim warnings that request evidence verification.
+- Sample profile/content and human-approval reminder.
+
+P2 — ONLY AFTER P0/P1 ARE STABLE:
+- Saved review history, multiple workspaces, PDF/CSV export, authentication/roles, persistent database, collaboration or analytics.
+Do not build P2 before the core workflow works reliably.
+
+============================================================
+3. RECOMMENDED STACK
+============================================================
+Frontend: React + Vite + JavaScript. Choose plain CSS OR Tailwind CSS; do not mix them without a reason. Lucide React is optional for icons.
+Backend: Node.js + Express + JavaScript ES modules.
+Review engine: deterministic rules for exact terms/patterns plus an LLM for nuanced tone/style feedback and explanations.
+Data: start with a local JSON brand profile. Add MongoDB only if saving profiles/review history is necessary and time allows.
+Deployment: public frontend + public backend. Configure CORS and a frontend API URL.
+
+Never put API keys in frontend code, browser-visible Vite variables, GitHub, screenshots or public documentation. Keep secrets in backend environment variables.
+
+============================================================
+4. WHICH AI MODEL / LLM?
+============================================================
+Do not hard-code a model name into many files. First verify current API availability, pricing/quotas and whether the team has an API key. A ChatGPT subscription does not automatically include API usage.
+
+Provider choices to evaluate:
+- OpenAI API: a currently available small/fast model suitable for structured text review.
+- Google Gemini API: a currently available Flash-class model suitable for fast text analysis.
+- Anthropic API: a currently available cost-efficient Claude model if the team already has access.
+
+Choose ONE provider for the MVP based on access, price, latency and reliable structured JSON output. Do not integrate multiple providers during Round 2 unless the first integration is already stable. Put provider logic in one small module (e.g. reviewProvider.js) so it can be swapped later.
+
+Recommended backend function:
+analyzeContent({ content, brandProfile })
+
+Expected structured response example:
+{
+  "overallAssessment": "needs_review",
+  "issues": [
+    {
+      "category": "terminology | tone | style | claim_risk",
+      "severity": "low | medium | high",
+      "snippet": "exact text from submitted content",
+      "reason": "brief explanation based on the provided brand rules",
+      "suggestion": "actionable revision"
+    }
+  ],
+  "revisedDraft": "proposed revised content",
+  "humanReviewRequired": true
+}
+
+This is a target schema, not a guarantee that the model will return valid JSON. Validate every field before rendering it. On timeout/provider failure/invalid output, show a safe message and fall back to deterministic rules when possible.
+
+============================================================
+5. SIMPLE ARCHITECTURE
+============================================================
+React UI -> POST /api/review -> Express API -> input validation -> deterministic rule checks -> LLM provider adapter -> validate/merge findings -> JSON response -> React results UI.
+
+Responsibilities:
+- UI: collect input and display results.
+- API route: validate requests and call services.
+- Rule engine: deterministic checks.
+- LLM provider module: external model call only.
+- Output validator: checks model response shape.
+- Config: reads environment variables.
+
+A single frontend and a single backend are enough. Avoid microservices, agents, vector databases and complex orchestration unless a real requirement demands them.
+
+============================================================
+6. SUGGESTED REPOSITORY STRUCTURE
+============================================================
+brandguard-ai/
+  README.md
+  PROJECT_MASTER_PLAN.txt
+  .gitignore
+  frontend/
+    package.json
+    .env.example
+    index.html
+    src/
+      main.jsx
+      App.jsx
+      styles.css
+      components/
+        BrandProfilePanel.jsx
+        ContentEditor.jsx
+        ReviewResults.jsx
+        IssueCard.jsx
+        RevisedDraft.jsx
+      services/reviewApi.js
+  backend/
+    package.json
+    .env.example
+    src/
+      server.js
+      routes/reviewRoutes.js
+      routes/brandRoutes.js
+      services/reviewService.js
+      services/ruleEngine.js
+      services/reviewProvider.js
+      validators/reviewSchema.js
+      config/env.js
+      data/sampleBrandProfile.json
+
+This is a target structure, not a requirement to create every file immediately. Start small and split files only when separation improves clarity. Do not create empty files just to match this diagram.
+
+============================================================
+7. IMPLEMENTATION ROADMAP — FOLLOW IN ORDER
+============================================================
+STEP 0 — Inspect and establish a baseline
+- Inspect repository, package files and existing implementation.
+- If using the provided starter, install frontend/backend dependencies.
+- Start frontend and backend.
+- Test GET /api/health and POST /api/review.
+- Confirm the review button renders results in the UI.
+- Record errors before adding features. Do not replace code before understanding it.
+Acceptance: app starts locally, review button works and results are visible.
+
+STEP 1 — Stabilize the rule-based workflow
+- Validate input; reject empty content and set a reasonable length limit.
+- Each finding should include category, severity, snippet/match, reason and suggestion.
+- Handle unexpected API responses without crashing.
+- Show a disclaimer that findings are advisory and require human review.
+Acceptance: test normal text, empty text, banned wording, preferred wording and API failure.
+
+STEP 2 — Make brand guidelines configurable
+- Add a simple form for brand name, voice traits, banned words, preferred terms and notes.
+- Validate the profile.
+- Initially keep profile state in frontend and send it with the review request; persistence can come later.
+- Use a sample profile by default.
+Acceptance: changing a banned word changes the next review result.
+
+STEP 3 — Add LLM-assisted review safely
+- Choose one provider based on current access, availability and budget.
+- Add one backend provider adapter; send only necessary content/rules.
+- Request the agreed JSON schema and validate the result server-side.
+- Merge LLM findings with deterministic findings without duplicate noise.
+- Claim-risk flags should ask for evidence/review, not declare claims false.
+- Add timeout and safe error handling; fall back to rules if the provider fails.
+- Never expose stack traces, API keys, internal prompts or raw provider errors to users.
+Acceptance: valid findings render; malformed output and provider failure do not crash the app; no key is in frontend bundle or Git.
+
+STEP 4 — Improve revised draft flow
+- Show original and suggested draft separately.
+- Allow copy of suggested draft.
+- If time allows, allow individual suggestions to be selected before applying.
+- Never silently overwrite the original.
+Acceptance: user can inspect original, copy revised version and return to original.
+
+STEP 5 — Test reliability
+Test: empty input, very long input, ordinary copy, banned term, preferred term, absolute/evidence-sensitive claim, LLM timeout, invalid model JSON, backend unavailable, mobile viewport and repeated reviews. Fix blockers before adding more features.
+
+STEP 6 — Deploy
+- Deploy backend and test health endpoint.
+- Configure production environment variables in hosting dashboard.
+- Set frontend API URL to deployed backend.
+- Deploy frontend and configure CORS.
+- Test public link in private/incognito browser while signed out.
+- A successful build is not proof that the deployed workflow works.
+
+STEP 7 — Prepare Round 2 submission
+- Public working project link
+- Public source repository link
+- Updated project PDF
+- List of features that actually work
+- Technology/implementation details
+- Honest explanation of changes from Round 1
+- Three meaningful Round 3 improvements
+Never claim unimplemented features are complete.
+
+============================================================
+8. THREE POSSIBLE ROUND 3 IMPROVEMENTS
+============================================================
+Choose based on the actual Round 2 build. Possible meaningful additions:
+1. Evidence-backed claim review: attach approved source documents and show supporting/missing evidence for risky claims.
+2. Multi-brand profiles and review history: save profiles and past reviews for repeatable use.
+3. Human approval and audit trail: reviewers approve/reject suggestions and record who decided and why.
+List these as planned unless already implemented.
+
+============================================================
+9. CODE QUALITY RULES — VERY IMPORTANT
+============================================================
+A. SIMPLE, STRUCTURED CODE
+- Write readable, beginner-friendly code.
+- Prefer straightforward logic over clever tricks.
+- Use small functions with descriptive names and one clear responsibility.
+- Use descriptive variables and consistent conventions.
+- Add comments when they explain why something is done, not to repeat the code.
+
+B. NO HEAVY OR REPEATED CODE
+- Do not duplicate validation, API calls, formatting or rule logic in multiple places.
+- Extract a helper when logic is genuinely reused; do not create abstractions for one trivial line.
+- Avoid giant components/server files when a simple separation improves readability.
+- Do not add a library, framework, pattern or package without a concrete reason.
+- Do not add a database, authentication, queues, vector database, agents or microservices just to make the project appear advanced.
+- Avoid premature optimization. Optimize first for correctness, readability and a working end-to-end flow.
+
+C. SAFE CHANGES
+- Inspect files before editing.
+- Preserve working features and make the smallest reasonable change.
+- Do not delete/replace existing files without explaining why.
+- Avoid unnecessary package/config changes.
+- Keep secrets out of source control.
+
+D. TEST AFTER CHANGES
+- Run a relevant test after each logical change or give exact manual test steps.
+- Report what passed, failed and was not tested.
+- If a test cannot be run, say so clearly.
+
+E. AFTER EACH CODING TASK, REPORT
+1. What changed.
+2. Files created/modified.
+3. How to run it.
+4. How to test it.
+5. Known limitations.
+6. The next single recommended step.
+
+============================================================
+10. SECURITY AND RESPONSIBLE REVIEW
+============================================================
+- API keys stay in backend environment variables.
+- Commit .env.example placeholders, never real .env files.
+- Validate user input and model output.
+- Use request-size limits and reasonable provider timeouts.
+- Show generic user-facing errors; never expose stack traces or internal details.
+- Do not automatically publish/send reviewed content.
+- Do not claim legal, regulatory or factual certainty.
+- A flagged claim means “verify against approved evidence,” not “this claim is false.”
+- Human approval is required before publication.
+
+============================================================
+11. TWO-PERSON TEAM SPLIT
+============================================================
+Developer A — Frontend/user experience:
+- Content editor and brand profile form
+- Findings/severity display
+- Revised draft and copy action
+- Loading, empty, error states and responsive layout
+
+Developer B — Backend/review engine:
+- Express API and validation
+- Deterministic rule engine
+- LLM provider adapter
+- Response schema validation
+- Error handling, tests and backend deployment
+
+Both developers:
+- Agree on API request/response before parallel coding.
+- Integrate early, not on the final day.
+- Test end-to-end together.
+- Commit small, meaningful changes to GitHub.
+- Review each other's changes before submission.
+
+============================================================
+12. API CONTRACT — KEEP BOTH SIDES IN SYNC
+============================================================
+Proposed endpoint: POST /api/review
+
+Request example:
+{
+  "text": "Marketing copy goes here",
+  "brandProfile": {
+    "brandName": "Northstar",
+    "voice": ["clear", "helpful"],
+    "avoidWords": ["guaranteed"],
+    "preferredTerms": [{"from": "cheap", "to": "affordable"}],
+    "notes": "Avoid absolute promises."
+  }
+}
+
+Response example:
+{
+  "overallAssessment": "needs_review",
+  "issues": [{
+    "category": "terminology",
+    "severity": "high",
+    "snippet": "guaranteed",
+    "reason": "This phrase is on the avoid list.",
+    "suggestion": "Use specific, supportable wording."
+  }],
+  "revisedDraft": "Suggested revised copy",
+  "humanReviewRequired": true,
+  "analysisMode": "rules_only"
+}
+
+This is a target contract. Update frontend and backend together if it changes. The frontend must not rely on undocumented response fields.
+
+====================================================================================================================
+13. CURRENT STATUS - SEE PROGRESS_TRACKER.md
+============================================================
+The live status, checklist, session log and next actions are kept in PROGRESS_TRACKER.md (single source of truth).
+Last update: 22 Oct 2026, session 1. Backend + frontend code written; backend unit tests pass (19/19); npm install, browser run and deployment NOT yet verified.
+
+====
+14. PROMPT TO GIVE AN AI CODING ASSISTANT
+============================================================
+You are helping build BrandGuard AI for the FutureStack hackathon.
+
+Read PROJECT_MASTER_PLAN.txt and inspect the actual current repository before changing anything. The repository is the source of truth. First summarize what is already implemented and what is not, comparing it with the status checklist. Then work on ONLY the next highest-priority unfinished step. Do not attempt to implement the whole roadmap at once.
+
+Write clear, simple, modular, beginner-friendly code. Avoid heavy architecture, unnecessary dependencies, giant files, repeated code and premature optimization. Reuse existing working code and make the smallest safe change that meets the requirement.
+
+Before editing, briefly explain the intended change. After editing, run relevant tests or provide exact test steps. Report changed files, results, limitations and the next single step. Never claim a feature works unless tested or clearly mark it untested.
+
+Keep secrets out of frontend and Git. Do not expose stack traces or internal errors. Keep deterministic rule checks available if the LLM provider fails. Treat claim flags as requests for human evidence review, not proof of falsity. Human approval is required before publication.
+
+At the end of every session, provide an updated STATUS section that can be copied into PROJECT_MASTER_PLAN.txt. Do not assume previous-session changes succeeded; inspect and verify current files.
+
+============================================================
+END OF FILE
+============================================================
