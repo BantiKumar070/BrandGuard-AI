@@ -20,7 +20,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 and click **Review content**. The app has five pages: Overview, Brand Profiles, Content Review, Review History and Settings.
+Open https://brandguard-ai-omega.vercel.app/ and click **Review content**. The app has five pages: Overview, Brand Profiles, Content Review, Review History and Settings.
 
 ## Configuration
 
